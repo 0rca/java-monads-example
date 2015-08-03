@@ -5,6 +5,7 @@ import java.util.function.Function;
 
 interface Command<T> {
 
+    // execute :: Command t -> t
     T execute();
 
     // pure :: t -> Command t
