@@ -2,43 +2,22 @@ package example;
 
 import java.util.Scanner;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
-// Command is a supplier with side-effects
-abstract class Command<T> implements Supplier<T>{
-    T execute() {
-        return get();
+interface Command<T> {
+
+    T execute();
+
+    default <U> Command<U> bind(Function<T,Command<U>> fn) {
+        final Command<T> that = this;
+        return () -> fn.apply(that.execute()).execute();
     }
 
-    @Override
-    public T get() {
-        return execute();
-    }
-}
-
-class FluentCommand<T> extends Command<T> implements Supplier<T> {
-    final private Supplier<T> supplier;
-
-    private FluentCommand(Supplier<T> supplier) {
-        this.supplier = supplier;
-    }
-
-    static <T> FluentCommand<T> of(final Supplier<T> supplier) {
-        return new FluentCommand<>(supplier);
-    }
-
-    <U> FluentCommand<U> mbind(final Function<T, FluentCommand<U>> fn) {return of(() -> fn.apply(execute()).get()); }
-
-    <U> FluentCommand<U> then(FluentCommand<U> cmd) { return mbind(t -> cmd); }
-
-
-    @Override
-    public T get() {
-        return supplier.get();
+    default <U>Command<U> then(Command<U> cmd) {
+        return bind(t -> cmd);
     }
 }
 
-class GetLine extends Command<String> {
+class GetLine implements Command<String> {
     Scanner scanner = new Scanner(System.in);
 
     @Override
@@ -48,46 +27,37 @@ class GetLine extends Command<String> {
     }
 }
 
-class PutStrLn extends Command {
+class PutStrLn implements Command {
     public PutStrLn(String string) {
         this.string = string;
     }
     private String string;
 
-
     @Override
-    Object execute() {
+    public Object execute() {
         System.out.print("Side-effect: ");
         System.out.println(string);
         return null;
     }
 }
 
-class ParseYear extends Command<Integer> {
-    String string;
-
-    ParseYear(String year) {
-        this.string = year;
-    }
-
-    @Override
-    public Integer get() {
-        return Integer.parseInt(string);
-    }
-}
-
 @SuppressWarnings("unchecked")
 public class Main {
-    static FluentCommand<String> ask(String prompt) {
-        return FluentCommand.of(new PutStrLn(prompt))
-                            .then(FluentCommand.of(new GetLine()));
+    static Command putStrLn(String string) {
+        return new PutStrLn(string);
+    }
+    static Command<String> getLine() {
+        return new GetLine();
+    }
+    static Command<String> ask(String prompt) {
+        return putStrLn(prompt).then(getLine());
     }
 
     public static void main(String[] args) {
-        Command io = ask("What is your name?").mbind(name ->
-                     ask("What is your birth year?").mbind(year ->
-                     FluentCommand.of(new ParseYear(year)).mbind(yearInt ->
-                     FluentCommand.of(new PutStrLn(String.format("Hello, %s. You should be %d in %d", name, 2015 - yearInt, 2015))))));
+        Command io = ask("What is your name?").bind(name ->
+                     ask("What is your birth year?").bind(year -> {
+                         Integer yearInt = Integer.parseInt(year);
+                         return putStrLn(String.format("Hello, %s. You should be %d in %d", name, 2015 - yearInt, 2015));}));
 
         System.out.println("=== Side-effects beyond this point only ===");
         io.execute();
