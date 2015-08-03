@@ -27,7 +27,7 @@ class FluentCommand<T> extends Command<T> implements Supplier<T> {
         return new FluentCommand<>(supplier);
     }
 
-    <U> FluentCommand<U> mbind(final Function<T, FluentCommand<U>> fn) { return fn.apply(execute()); }
+    <U> FluentCommand<U> mbind(final Function<T, FluentCommand<U>> fn) {return of(() -> fn.apply(execute()).get()); }
 
     <U> FluentCommand<U> then(FluentCommand<U> cmd) { return mbind(t -> cmd); }
 
@@ -43,6 +43,7 @@ class GetLine extends Command<String> {
 
     @Override
     public String execute() {
+        System.out.print("Side-effect: ");
         return scanner.nextLine();
     }
 }
@@ -56,6 +57,7 @@ class PutStrLn extends Command {
 
     @Override
     Object execute() {
+        System.out.print("Side-effect: ");
         System.out.println(string);
         return null;
     }
@@ -87,6 +89,7 @@ public class Main {
                      FluentCommand.of(new ParseYear(year)).mbind(yearInt ->
                      FluentCommand.of(new PutStrLn(String.format("Hello, %s. You should be %d in %d", name, 2015 - yearInt, 2015))))));
 
+        System.out.println("=== Side-effects beyond this point only ===");
         io.execute();
     }
 }
