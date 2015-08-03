@@ -8,7 +8,7 @@ interface Command<T> {
     // execute :: Command t -> t
     T execute();
 
-    // pure :: t -> Command t
+    // return :: t -> Command t
     static <U> Command<U> pure(U value) {
         return () -> value;
     }
@@ -48,25 +48,17 @@ class PutStrLn implements Command<Void> {
     }
 }
 
-//@SuppressWarnings("unchecked")
 public class Main {
-    static Command<Void> putStrLn(String string) {
-        return new PutStrLn(string);
-    }
-    static Command<String> getLine() {
-        return new GetLine();
-    }
-    static Command<String> ask(String prompt) {
-        return putStrLn(prompt).then(getLine());
-    }
+    static Function<String, Command<Void>>   putStrLn = s -> new PutStrLn(s);
+    static Function<String, Command<String>> ask      = s -> putStrLn.apply(s).then(new GetLine());
 
     public static void main(String[] args) {
-        Command<Integer> io = ask("What is your name?").bind(name ->
-                     ask("What is your year of birth?").bind(year -> {
-                         Integer yearInt = Integer.parseInt(year);
-                         Integer age = 2015 - yearInt;
-                         return putStrLn(String.format("Hello, %s. You should be %d in %d", name, age, 2015)).then(Command.pure(age));
-                     }));
+        Command<Integer> io =   ask.apply("What is your name?").bind(name ->
+                                ask.apply("What is your year of birth?").bind(year ->
+                                Command.pure(2015 - Integer.parseInt(year)).bind(age ->
+                                Command.pure("Hello, " + name + ". You should be " + age + " in 2015").bind(ans ->
+                                putStrLn.apply(ans).then(
+                                Command.pure(age))))));
 
         System.out.println("=== Side-effects beyond this point only ===");
         Integer age = io.execute();
