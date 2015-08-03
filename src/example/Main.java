@@ -7,6 +7,11 @@ interface Command<T> {
 
     T execute();
 
+    // pure :: t -> Command t
+    static <U> Command<U> pure(U value) {
+        return () -> value;
+    }
+
     // (>>=) :: Command t -> (t -> Command u) -> Command u
     default <U> Command<U> bind(Function<T,Command<U>> fn) {
         return () -> fn.apply(this.execute()).execute();
@@ -28,23 +33,23 @@ class GetLine implements Command<String> {
     }
 }
 
-class PutStrLn implements Command {
+class PutStrLn implements Command<Void> {
     public PutStrLn(String string) {
         this.string = string;
     }
     private String string;
 
     @Override
-    public Object execute() {
+    public Void execute() {
         System.out.print("Side-effect: ");
         System.out.println(string);
         return null;
     }
 }
 
-@SuppressWarnings("unchecked")
+//@SuppressWarnings("unchecked")
 public class Main {
-    static Command putStrLn(String string) {
+    static Command<Void> putStrLn(String string) {
         return new PutStrLn(string);
     }
     static Command<String> getLine() {
@@ -55,12 +60,16 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        Command io = ask("What is your name?").bind(name ->
+        Command<Integer> io = ask("What is your name?").bind(name ->
                      ask("What is your year of birth?").bind(year -> {
                          Integer yearInt = Integer.parseInt(year);
-                         return putStrLn(String.format("Hello, %s. You should be %d in %d", name, 2015 - yearInt, 2015));}));
+                         Integer age = 2015 - yearInt;
+                         return putStrLn(String.format("Hello, %s. You should be %d in %d", name, age, 2015)).then(Command.pure(age));
+                     }));
 
         System.out.println("=== Side-effects beyond this point only ===");
-        io.execute();
+        Integer age = io.execute();
+        System.out.print("Returned age: ");
+        System.out.print(age);
     }
 }
