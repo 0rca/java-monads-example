@@ -8,8 +8,7 @@ interface Command<T> {
     T execute();
 
     default <U> Command<U> bind(Function<T,Command<U>> fn) {
-        final Command<T> that = this;
-        return () -> fn.apply(that.execute()).execute();
+        return () -> fn.apply(this.execute()).execute();
     }
 
     default <U>Command<U> then(Command<U> cmd) {
@@ -55,7 +54,7 @@ public class Main {
 
     public static void main(String[] args) {
         Command io = ask("What is your name?").bind(name ->
-                     ask("What is your birth year?").bind(year -> {
+                     ask("What is your year of birth?").bind(year -> {
                          Integer yearInt = Integer.parseInt(year);
                          return putStrLn(String.format("Hello, %s. You should be %d in %d", name, 2015 - yearInt, 2015));}));
 
