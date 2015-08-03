@@ -7,10 +7,12 @@ interface Command<T> {
 
     T execute();
 
+    // (>>=) :: Command t -> (t -> Command u) -> Command u
     default <U> Command<U> bind(Function<T,Command<U>> fn) {
         return () -> fn.apply(this.execute()).execute();
     }
 
+    // (>>) :: Command t -> Command u -> Command u
     default <U>Command<U> then(Command<U> cmd) {
         return bind(t -> cmd);
     }
